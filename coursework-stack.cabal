@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f8746fee76016e2dbfa165d02cc6211baf4a42c91e0c180fc14d837fc1c13ff3
+-- hash: 4ea0607cb18fd009453d0d92490aa0fc8f4316f60ca54bb75557a981889bcce0
 
 name:           coursework-stack
 version:        0.1.0.0
@@ -27,6 +27,7 @@ source-repository head
 
 library
   exposed-modules:
+      Challenge15
       Challenges
       Lib
       Parsing

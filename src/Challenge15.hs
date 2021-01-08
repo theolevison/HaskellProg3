@@ -5,7 +5,7 @@
 -- The dummy functions here simply return an arbitrary value that is usually wrong 
 
 -- DO NOT MODIFY THE FOLLOWING LINES OF CODE
-module Challenges (WordSearchGrid,Placement,Posn,Orientation(..), solveWordSearch, createWordSearch,
+module Challenge15 (WordSearchGrid,Placement,Posn,Orientation(..), solveWordSearch, createWordSearch,
     LamMacroExpr(..),LamExpr(..),prettyPrint, parseLamMacro,
     cpsTransform,innerRedn1,outerRedn1,compareInnerOuter) where
 
@@ -83,7 +83,7 @@ generatePlacement posn@(x1,y1) (x2,y2)
     | x == -1 && y == -1 = (posn,UpBack)
     | x == -1 && y == 0 = (posn,Back)
     | x == -1 && y == 1 = (posn,DownBack)
-    | x == 0 && y == 1 = (posn,Challenges.Down)
+    | x == 0 && y == 1 = (posn,Challenge15.Down)
     | x == 1 && y == 1 = (posn,DownForward)
     | x == 1 && y == 0 = (posn,Forward)
     | x == 1 && y == -1 = (posn,UpForward)
@@ -118,7 +118,7 @@ orientationToXY orientation = case orientation of
     UpBack -> (-1,-1)
     Back -> (-1,0)
     DownBack -> (-1,1)
-    Challenges.Down -> (0,1)
+    Challenge15.Down -> (0,1)
     DownForward -> (1,1)
     Forward -> (1,0)
     UpForward -> (1,-1)
