@@ -244,21 +244,192 @@ printGrid (w:ws) = do putStrLn w
 
 -- Challenge 3 --
 
+
+-- types for Parts II and III
+--data LamMacroExpr = LamDef [ (String,LamExpr) ] LamExpr deriving (Eq,Show,Read)
+--data LamExpr = LamMacro String | LamApp LamExpr LamExpr  |
+--               LamAbs Int LamExpr  | LamVar Int deriving (Eq,Show,Read)
+
+--TODO: list could have more tuples in, change later to accommodate that
+--TODO: if two macros have the same name throw an error?
 prettyPrint :: LamMacroExpr -> String
-prettyPrint _ = ""
+prettyPrint orig@(LamDef x z) = prettyPrintMacros orig ++ expressionToMacro sortedOrig (lamExprToString z)
+    where
+        sortedOrig = LamDef (sortOn (Data.Ord.Down . countMacros) x) z
+
+prettyPrintMacros :: LamMacroExpr -> String
+prettyPrintMacros (LamDef [] z) = ""
+prettyPrintMacros (LamDef ((x,y):a) z) = "def " ++ x ++ " = " ++ lamExprToString y ++ " in " ++ prettyPrintMacros (LamDef a z)
+
+countMacros :: (String, LamExpr) -> Int
+countMacros (_,LamApp x y) = countMacros ("",x) + countMacros ("",y) + 1
+countMacros (_,LamAbs _ x) = countMacros ("",x) + 1
+countMacros _ = 1
+
+expressionToMacro :: LamMacroExpr -> String -> String
+expressionToMacro (LamDef [] z) string = string
+expressionToMacro (LamDef orig@((x,y):a) z) string = case findIndex (isPrefixOf stringY) (tails string) of
+    Nothing -> expressionToMacro (LamDef a z) string
+    Just index -> if string !! (index -1) == '(' && string !! (index + length stringY) == ')' then expressionToMacro (LamDef orig z) (take (index -1) string ++ x ++ drop (index + length stringY + 1) string) else expressionToMacro (LamDef orig z) (take index string ++ x ++ drop (index + length stringY) string) --macro found, now replace and run again
+    where
+        stringY = lamExprToString y
+
+lamExprToString :: LamExpr -> String
+lamExprToString (LamMacro x) = x
+lamExprToString (LamVar x) = "x" ++ show x
+lamExprToString (LamApp x y@(LamApp _ _)) = lamExprToString x ++ " (" ++ lamExprToString y ++ ")" --doesnt work for macros
+lamExprToString (LamApp x@(LamAbs _ _) y) = "(" ++ lamExprToString x ++ ") " ++ lamExprToString y
+lamExprToString (LamApp x y) = lamExprToString x ++ " " ++ lamExprToString y
+lamExprToString (LamAbs x y) = "\\x" ++ show x ++ " -> " ++ lamExprToString y
+
 
 -- examples in the instructions
 ex3'1 = LamDef [] (LamApp (LamAbs 1 (LamVar 1)) (LamAbs 1 (LamVar 1)))
 ex3'2 = LamDef [] (LamAbs 1 (LamApp (LamVar 1) (LamAbs 1 (LamVar 1))))
 ex3'3 = LamDef [ ("F", LamAbs 1 (LamVar 1) ) ] (LamAbs 2 (LamApp (LamVar 2) (LamMacro "F")))
-ex3'4 = LamDef [ ("F", LamAbs 1 (LamVar 1) ) ] (LamAbs 2 (LamApp (LamAbs 1 (LamVar 1)) (LamVar 2))) 
+ex3'4 = LamDef [ ("F", LamAbs 1 (LamVar 1) ) ] (LamAbs 2 (LamApp (LamAbs 1 (LamVar 1)) (LamVar 2)))
+ex3'5 = LamDef [] (LamApp (LamVar 1) (LamApp (LamVar 2) (LamVar 3))) --should be x1 (x2 x3)
+ex3'6 = LamDef [ ("F", LamAbs 1 (LamVar 1) ),("Q", LamAbs 1 (LamVar 1) ),("Z", LamApp (LamAbs 1 (LamVar 1)) (LamVar 2) ) ] (LamAbs 2 (LamApp (LamAbs 1 (LamVar 1)) (LamVar 2))) 
 
 
 -- Challenge 4 --
 
-parseLamMacro :: String -> Maybe LamMacroExpr
-parseLamMacro _ = Nothing 
+-- data LamMacroExpr = LamDef [ (String,LamExpr) ] LamExpr deriving (Eq,Show,Read)
+-- data LamExpr = LamMacro String | LamApp LamExpr LamExpr  |
+--                LamAbs Int LamExpr  | LamVar Int deriving (Eq,Show,Read)
 
+-- MacroExpr ::= "def" MacroName "=" Expr "in" MacroExpr | Expr
+-- Expr ::= Var | MacroName | Expr Expr | “\” Var “->” Expr | “(“ Expr “)”
+-- MacroName ::= UChar | UChar MacroName
+-- UChar ::= "A" | "B" | ... | "Z"
+-- Var ::= “x” Digits
+-- Digits ::= Digit | Digit Digits
+-- Digit ::= “0” | “1” | “2” | “3” | “4” | “5” | “6” | “7” | “8” | “9”
+
+data Temp = Start [(String,LamExpr)] | End LamExpr
+
+parseLamMacro :: String -> Maybe LamMacroExpr
+parseLamMacro xs = Just (LamDef (init list) (snd $ last list))
+    where
+        list = fst (head (parse macroExpr xs))
+
+
+testParse :: [Char] -> Maybe [([(String, LamExpr)], String)]
+testParse xs = Just list
+    where
+        list = parse macroExpr xs
+
+
+
+testParse2 xs = Just list
+    where
+        list = parse expr2 xs
+
+thing :: Parser String
+thing = do
+    string "x1"
+
+expr2 :: Parser LamExpr
+expr2 = do
+        x <- expr4
+        char ' '
+        y <- expr4
+        return (LamApp x y)
+
+expr4 = do
+        string "x1"
+        return (LamVar 1)
+
+expr3 :: Parser LamExpr
+expr3 = do
+        char 'x'
+        return (LamVar 1)
+    <|> do 
+        x <- expr3
+        string "x1"
+        LamApp x <$> expr3
+
+macroExpr :: Parser [(String,LamExpr)]
+macroExpr = do
+    string "def "
+    x <- macroName
+    string " = "
+    y <- expr
+    string " in "
+    z <- macroExpr
+    return ((x,y) : z)
+    <|> do
+        x <- expr
+        return [("End",x)]
+
+appExpr = do 
+        x <- expr
+        char ' '
+        LamApp x <$> expr
+    <|> do
+
+expr :: Parser LamExpr
+expr = do
+        LamVar <$> var
+    <|> do
+        LamMacro <$> macroName
+    <|> do
+        char '\\'
+        x <- var
+        string " -> "
+        LamAbs x <$> expr
+    <|> do 
+        char '('
+        x <- expr
+        char ')'
+        return x
+    <|> do 
+        x <- expr
+        char ' '
+        LamApp x <$> expr
+
+macroName :: Parser String
+macroName = do
+        x <- uChar
+        return [x]
+    <|> do
+        x <- uChar
+        y <- macroName
+        return (x : y)
+
+uChar :: Parser Char
+uChar = do 
+    sat isUpper
+
+var :: Parser Int
+var = do
+    char 'x'
+    read <$> digits
+
+--newtype Parser a = P (String -> [(a,String)])
+
+digits :: Parser String
+digits = do
+        x <- digit
+        return [x]
+    <|> do
+        x <- digit
+        y <- digits
+        return (x : y)
+    
+--use monadic parsing dumb dumb
+-- parseMacros :: String -> Maybe [Maybe (String, LamExpr)]
+-- parseMacros x = case findIndex (isPrefixOf "def") tailsString of
+--     Nothing -> Just []
+--     Just index1 -> case findIndex (isPrefixOf "in") tailsString of
+--         Nothing -> Nothing -- def without in found, not valid
+--         Just index2 -> Just (macroToLamMacro (drop index1 (take index2 x)) : fromMaybe [] $ parseMacros (drop index2 x))
+--     where
+--         tailsString = tails x
+
+
+-- macroToLamMacro :: String -> Maybe (String,LamExpr)
+-- macroToLamMacro x = drop 3 x 
 
 -- Challenge 5
 
@@ -267,10 +438,10 @@ cpsTransform _ = LamDef [] (LamVar 0)
 
 -- Examples in the instructions
 exId =  LamAbs 1 (LamVar 1)
-ex5'1 = (LamApp (LamVar 1) (LamVar 2))
-ex5'2 = (LamDef [ ("F", exId) ] (LamVar 2) )
-ex5'3 = (LamDef [ ("F", exId) ] (LamMacro "F") )
-ex5'4 = (LamDef [ ("F", exId) ] (LamApp (LamMacro "F") (LamMacro "F")))
+ex5'1 = LamApp (LamVar 1) (LamVar 2)
+ex5'2 = LamDef [ ("F", exId) ] (LamVar 2)
+ex5'3 = LamDef [ ("F", exId) ] (LamMacro "F")
+ex5'4 = LamDef [ ("F", exId) ] (LamApp (LamMacro "F") (LamMacro "F"))
 
 
 -- Challenge 6
@@ -296,7 +467,7 @@ ex6'2 = LamDef [ ("F",exId) ] (LamMacro "F")
 ex6'3 = LamDef [] ( LamApp exId (LamAbs 2 (LamVar 2)))
 
 --  (\x1 -> x1 x1)(\x1 -> x1 x1)  
-wExp = (LamAbs 1 (LamApp (LamVar 1) (LamVar 1)))
+wExp = LamAbs 1 (LamApp (LamVar 1) (LamVar 1))
 ex6'4 = LamDef [] (LamApp wExp wExp)
 
 --  def ID = \x1 -> x1 in def FST = (\x1 -> λx2 -> x1) in FST x3 (ID x4) 
